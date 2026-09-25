@@ -1,6 +1,6 @@
 <p align="center">
 <img width="300" src="https://i.imgur.com/puyIfHT.jpg" /><br>
-A Web Dashbord for Nmap XML Report 
+A Web Dashboard for Nmap XML reports
 </p>
 
 ![WebMap](https://i.imgur.com/U9S089v.png)
@@ -10,7 +10,12 @@ A Web Dashbord for Nmap XML Report
 ![WebMap](https://i.imgur.com/alWZix9.png)
 
 ## Table Of Contents
+- [Project Overview](#project-overview)
+- [Repository Structure](#repository-structure)
+- [Technology Stack](#technology-stack)
 - [Usage](#usage)
+- [How It Works](#how-it-works)
+- [API Endpoints](#api-endpoints)
 - [Video](#video)
 - [Features](#features)
 - [XML Filenames](#xml-filenames)
@@ -19,8 +24,38 @@ A Web Dashbord for Nmap XML Report
 - [Contributors](#contributors)
 - [Contacts](#contacts)
 
+## Project Overview
+WebMap is a Django-based web UI for Nmap XML output.
+It lets you load scans from disk, browse hosts and ports, annotate findings (labels + notes), inspect script output, and export a PDF report.
+
+## Repository Structure
+This repository is a Django app module (not a full Django project scaffold by itself).
+
+- `/home/runner/work/webmap/webmap/views.py`  
+  Main HTML view logic for scan list, scan dashboard, host details, filters, counters, and charts.
+- `/home/runner/work/webmap/webmap/api.py`  
+  AJAX endpoints for labels, notes, port details, and PDF generation.
+- `/home/runner/work/webmap/webmap/pdf.py`  
+  Builds the HTML used by wkhtmltopdf for report export.
+- `/home/runner/work/webmap/webmap/templates/nmapreport/`  
+  Django templates (`index.html`, `report.html`).
+- `/home/runner/work/webmap/webmap/static/`  
+  Frontend assets (CSS, JavaScript, logos).
+- `/home/runner/work/webmap/webmap/functions.py`  
+  Small mapping helpers (labels/colors/icons).
+- `/home/runner/work/webmap/webmap/urls.py`  
+  URL routing for pages and API.
+
+## Technology Stack
+- Python + Django
+- xmltodict for Nmap XML parsing
+- Materialize CSS + jQuery for UI
+- Chart.js + Google Charts for data visualization
+- Clipboard.js for copy-to-clipboard actions
+- wkhtmltopdf for PDF export
+
 ## Usage
-You should use this with docker, just by sending this command:
+### Docker (recommended)
 ```bash
 $ mkdir /tmp/webmap
 $ docker run -d \
@@ -34,6 +69,41 @@ $ # now you can run Nmap and save the XML Report on /tmp/webmap
 $ nmap -sT -A -T4 -oX /tmp/webmap/myscan.xml 192.168.1.0/24
 ```
 Now point your browser to http://localhost:8000
+
+### Typical workflow
+1. Place one or more `.xml` Nmap reports in the mounted XML directory (`/opt/xml` in the container).
+2. Open WebMap and pick a scan file from the scan list.
+3. Review host table, port states, top services, and charts.
+4. Click a host IP to open host-level details.
+5. Add host labels (`Vulnerable`, `Critical`, `Warning`, `Checked`) and notes.
+6. Use port detail actions to inspect scripts or copy commands (curl/nikto/telnet).
+7. Generate a PDF report from the floating action button.
+
+### Data directories used by the app
+- XML input: `/opt/xml`
+- Labels/notes storage: `/opt/notes`
+- Generated PDF output: `/opt/nmapdashboard/nmapreport/static`
+
+## How It Works
+1. XML is parsed server-side with `xmltodict`.
+2. Parsed data is transformed into HTML fragments in Django views.
+3. Frontend JavaScript calls API endpoints for labels/notes/port details/PDF.
+4. Notes and labels are persisted as files under `/opt/notes`.
+5. PDF export renders `/view/pdf/` with session cookie and converts it via wkhtmltopdf.
+
+## API Endpoints
+- `GET /report/api/setlabel/<objtype>/<label>/<hashstr>/`  
+  Set a host/port label.
+- `GET /report/api/rmlabel/<objtype>/<hashstr>/`  
+  Remove a host/port label.
+- `POST /report/api/savenotes/`  
+  Save host notes.
+- `GET /report/api/rmnotes/<hashstr>/`  
+  Remove host notes.
+- `GET /report/api/<address>/<portid>/`  
+  Get raw details for a specific port on a host.
+- `GET /report/api/pdf/`  
+  Trigger PDF report generation.
 
 ## Video
 -- coming soon...

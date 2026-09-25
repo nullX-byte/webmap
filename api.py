@@ -3,18 +3,34 @@ from django.http import HttpResponse
 import xmltodict, json, html, os, hashlib, re
 from collections import OrderedDict
 
+def _json_response(data):
+	return HttpResponse(json.dumps(data), content_type="application/json")
+
 def rmNotes(request, hashstr):
+	if 'scanfile' not in request.session:
+		return _json_response({'error': 'scan file not loaded'})
+
 	scanfilemd5 = hashlib.md5(str(request.session['scanfile']).encode('utf-8')).hexdigest()
 	if re.match('^[a-f0-9]{32,32}$', hashstr) is not None:
-		os.remove('/opt/notes/'+scanfilemd5+'_'+hashstr+'.notes')
-		res = {'ok':'notes removed'}
+		notefile = '/opt/notes/'+scanfilemd5+'_'+hashstr+'.notes'
+		if os.path.exists(notefile):
+			os.remove(notefile)
+			res = {'ok':'notes removed'}
+		else:
+			res = {'error':'notes not found'}
 	else:
 		res = {'error':'invalid format'}
 
-	return HttpResponse(json.dumps(res), content_type="application/json")
+	return _json_response(res)
 
 def saveNotes(request):
 	if request.method == "POST":
+		if 'scanfile' not in request.session:
+			return _json_response({'error': 'scan file not loaded'})
+
+		if 'hashstr' not in request.POST or 'notes' not in request.POST:
+			return _json_response({'error': 'missing parameters'})
+
 		scanfilemd5 = hashlib.md5(str(request.session['scanfile']).encode('utf-8')).hexdigest()
 
 		if re.match('^[a-f0-9]{32,32}$', request.POST['hashstr']) is not None:
@@ -22,10 +38,12 @@ def saveNotes(request):
 			f.write(request.POST['notes'])
 			f.close()
 			res = {'ok':'notes saved'}
+		else:
+			res = {'error':'invalid format'}
 	else:
 		res = {'error': request.method }
 
-	return HttpResponse(json.dumps(res), content_type="application/json")
+	return _json_response(res)
 
 def rmlabel(request, objtype, hashstr):
 	types = {
@@ -33,12 +51,25 @@ def rmlabel(request, objtype, hashstr):
 		'port':True
 	}
 
+	if 'scanfile' not in request.session:
+		return _json_response({'error': 'scan file not loaded'})
+
+	if objtype not in types:
+		return _json_response({'error':'invalid object type'})
+
 	scanfilemd5 = hashlib.md5(str(request.session['scanfile']).encode('utf-8')).hexdigest()
 
 	if re.match('^[a-f0-9]{32,32}$', hashstr) is not None:
-		os.remove('/opt/notes/'+scanfilemd5+'_'+hashstr+'.'+objtype+'.label')
-		res = {'ok':'label removed'}
-		return HttpResponse(json.dumps(res), content_type="application/json")
+		labelfile = '/opt/notes/'+scanfilemd5+'_'+hashstr+'.'+objtype+'.label'
+		if os.path.exists(labelfile):
+			os.remove(labelfile)
+			res = {'ok':'label removed'}
+		else:
+			res = {'error':'label not found'}
+	else:
+		res = {'error':'invalid format'}
+
+	return _json_response(res)
 
 def label(request, objtype, label, hashstr):
 	labels = {
@@ -53,6 +84,9 @@ def label(request, objtype, label, hashstr):
 		'port':True
 	}
 
+	if 'scanfile' not in request.session:
+		return _json_response({'error': 'scan file not loaded'})
+
 	scanfilemd5 = hashlib.md5(str(request.session['scanfile']).encode('utf-8')).hexdigest()
 
 	if label in labels and objtype in types:
@@ -61,9 +95,17 @@ def label(request, objtype, label, hashstr):
 			f.write(label)
 			f.close()
 			res = {'ok':'label set', 'label':str(label)}
-			return HttpResponse(json.dumps(res), content_type="application/json")
+		else:
+			res = {'error':'invalid format'}
+	else:
+		res = {'error':'invalid label or object type'}
+
+	return _json_response(res)
 
 def port_details(request, address, portid):
+	if 'scanfile' not in request.session:
+		return _json_response({'error': 'scan file not loaded'})
+
 	r = {}
 	oo = xmltodict.parse(open('/opt/xml/'+request.session['scanfile'], 'r').read())
 	r['out'] = json.dumps(oo['nmaprun'], indent=4)
@@ -92,7 +134,9 @@ def port_details(request, address, portid):
 					p = i['ports']['port']
 
 				if p['@portid'] == portid:
-					return HttpResponse(json.dumps(p, indent=4), content_type="application/json")
+					return _json_response(p)
+
+	return _json_response({'error': 'port not found'})
 
 def genPDF(request):
 	if 'scanfile' in request.session:
@@ -102,4 +146,6 @@ def genPDF(request):
 
 		os.popen('/opt/wkhtmltox/bin/wkhtmltopdf --cookie sessionid '+request.session._session_key+' --enable-javascript --javascript-delay 6000 http://127.0.0.1:8000/view/pdf/ /opt/nmapdashboard/nmapreport/static/'+pdffile+'.pdf')
 		res = {'ok':'PDF created', 'file':'/static/'+pdffile+'.pdf'}
-		return HttpResponse(json.dumps(res), content_type="application/json")
+		return _json_response(res)
+
+	return _json_response({'error': 'scan file not loaded'})
