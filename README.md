@@ -13,6 +13,7 @@ A Web Dashboard for Nmap XML reports
 - [Project Overview](#project-overview)
 - [Repository Structure](#repository-structure)
 - [Technology Stack](#technology-stack)
+- [SETUP Instructions](#setup-instructions)
 - [Usage](#usage)
 - [How It Works](#how-it-works)
 - [API Endpoints](#api-endpoints)
@@ -53,6 +54,39 @@ This repository is a Django app module (not a full Django project scaffold by it
 - Chart.js + Google Charts for data visualization
 - Clipboard.js for copy-to-clipboard actions
 - wkhtmltopdf for PDF export
+
+## SETUP Instructions
+Use Docker to run WebMap quickly.
+
+### 1) Create a local folder for scan XML files
+```bash
+mkdir -p /tmp/webmap
+```
+
+### 2) Start the WebMap container
+```bash
+docker run -d \
+  --name webmap \
+  -h webmap \
+  -p 8000:8000 \
+  -v /tmp/webmap:/opt/xml \
+  rev3rse/webmap /run.sh
+```
+
+### 3) Generate and save an Nmap XML report
+```bash
+nmap -sT -A -T4 -oX /tmp/webmap/myscan.xml 192.168.1.0/24
+```
+
+### 4) Open the UI
+Go to: `http://localhost:8000`
+
+### 5) Use the tool
+1. Select your scan file from the scan list.
+2. Review discovered hosts/ports and charts.
+3. Click hosts for detailed service/port information.
+4. Add labels and notes where needed.
+5. Generate the PDF report from the floating action button.
 
 ## Usage
 ### Docker (recommended)
