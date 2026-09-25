@@ -6,14 +6,20 @@ from collections import OrderedDict
 def _json_response(data):
 	return HttpResponse(json.dumps(data), content_type="application/json")
 
+def _find_notes_path(filename):
+	for entry in os.scandir('/opt/notes'):
+		if entry.is_file() and entry.name == filename:
+			return entry.path
+	return None
+
 def rmNotes(request, hashstr):
 	if 'scanfile' not in request.session:
 		return _json_response({'error': 'scan file not loaded'})
 
 	scanfilemd5 = hashlib.md5(str(request.session['scanfile']).encode('utf-8')).hexdigest()
 	if re.match('^[a-f0-9]{32,32}$', hashstr) is not None:
-		notefile = '/opt/notes/'+scanfilemd5+'_'+hashstr+'.notes'
-		if os.path.exists(notefile):
+		notefile = _find_notes_path(scanfilemd5+'_'+hashstr+'.notes')
+		if notefile is not None:
 			os.remove(notefile)
 			res = {'ok':'notes removed'}
 		else:
@@ -60,8 +66,8 @@ def rmlabel(request, objtype, hashstr):
 	scanfilemd5 = hashlib.md5(str(request.session['scanfile']).encode('utf-8')).hexdigest()
 
 	if re.match('^[a-f0-9]{32,32}$', hashstr) is not None:
-		labelfile = '/opt/notes/'+scanfilemd5+'_'+hashstr+'.'+objtype+'.label'
-		if os.path.exists(labelfile):
+		labelfile = _find_notes_path(scanfilemd5+'_'+hashstr+'.'+objtype+'.label')
+		if labelfile is not None:
 			os.remove(labelfile)
 			res = {'ok':'label removed'}
 		else:
